@@ -336,17 +336,23 @@ public partial class WorkspaceHost : UserControl
 
     private void OnPanelCloseRequested(object? sender, EventArgs e)
     {
-        if (sender is not ChatPanel panel || _workspace is null)
+        if (sender is not ChatPanel panel)
         {
             return;
         }
 
-        if (!LayoutTreeEditor.TryClosePanel(_workspace, panel.PanelId))
+        var panelId = panel.PanelId;
+        Dispatcher.BeginInvoke(new Action(() => ClosePanel(panelId)));
+    }
+
+    private void ClosePanel(Guid panelId)
+    {
+        if (_workspace is null || !LayoutTreeEditor.TryClosePanel(_workspace, panelId))
         {
             return;
         }
 
-        if (_focusedPanelId == panel.PanelId)
+        if (_focusedPanelId == panelId)
         {
             _focusedPanelId = null;
         }
