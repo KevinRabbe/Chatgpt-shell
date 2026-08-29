@@ -1,8 +1,6 @@
-using System.Text.RegularExpressions;
-
 namespace ChatGPTShell.Roles;
 
-public static partial class PromptComposer
+public static class PromptComposer
 {
     private static readonly IReadOnlyDictionary<string, Func<RoleDefinition, PromptCompositionContext, string>> Tokens =
         new Dictionary<string, Func<RoleDefinition, PromptCompositionContext, string>>(StringComparer.Ordinal)
@@ -40,19 +38,21 @@ public static partial class PromptComposer
 
     private static void ValidateTemplateVariables(string roleId, string promptTemplate)
     {
-        foreach (Match match in PromptVariableRegex().Matches(promptTemplate))
+        var validationText = promptTemplate;
+
+        foreach (var token in Tokens.Keys)
         {
-            if (!Tokens.ContainsKey(match.Value))
-            {
-                throw new InvalidOperationException(
-                    $"Role '{roleId}' contains unsupported prompt variable '{match.Value}'.");
-            }
+            validationText = validationText.Replace(token, string.Empty, StringComparison.Ordinal);
+        }
+
+        if (validationText.Contains("{{", StringComparison.Ordinal)
+            || validationText.Contains("}}", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                $"Role '{roleId}' contains an unsupported or malformed prompt variable.");
         }
     }
 
     private static string ValueOrFallback(string value, string fallback) =>
         string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
-
-    [GeneratedRegex(@"\{\{[A-Z0-9_]+\}\}", RegexOptions.CultureInvariant)]
-    private static partial Regex PromptVariableRegex();
 }
