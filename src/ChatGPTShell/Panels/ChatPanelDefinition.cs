@@ -13,4 +13,6 @@ public sealed class ChatPanelDefinition
     public string? RoleVersion { get; set; }
 
     public string? Specialization { get; set; }
+
+    public string? PendingBootstrapPrompt { get; set; }
 }
