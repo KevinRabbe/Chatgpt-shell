@@ -74,7 +74,7 @@ public partial class WorkspaceHost : UserControl
     private Grid BuildColumnSplit(LayoutNodeDefinition node)
     {
         var grid = new Grid();
-        var ratio = Math.Clamp(node.Ratio, 0.1, 0.9);
+        var ratio = NormalizeRatio(node);
 
         var firstColumn = new ColumnDefinition
         {
@@ -114,7 +114,7 @@ public partial class WorkspaceHost : UserControl
     private Grid BuildRowSplit(LayoutNodeDefinition node)
     {
         var grid = new Grid();
-        var ratio = Math.Clamp(node.Ratio, 0.1, 0.9);
+        var ratio = NormalizeRatio(node);
 
         var firstRow = new RowDefinition
         {
@@ -161,6 +161,13 @@ public partial class WorkspaceHost : UserControl
         ShowsPreview = false,
         Cursor = cursor
     };
+
+    private static double NormalizeRatio(LayoutNodeDefinition node)
+    {
+        var ratio = Math.Clamp(node.Ratio, 0.1, 0.9);
+        node.Ratio = ratio;
+        return ratio;
+    }
 
     private void UpdateColumnRatio(
         LayoutNodeDefinition node,
