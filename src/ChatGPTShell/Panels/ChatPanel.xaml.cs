@@ -31,7 +31,10 @@ public partial class ChatPanel : UserControl, IDisposable
         ChatPanelDefinition definition,
         WebViewEnvironmentService environmentService)
     {
-        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_disposed)
+        {
+            throw new ObjectDisposedException(nameof(ChatPanel));
+        }
 
         _definition = definition ?? throw new ArgumentNullException(nameof(definition));
         _environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
@@ -57,6 +60,12 @@ public partial class ChatPanel : UserControl, IDisposable
 
         _disposed = true;
         Loaded -= OnLoaded;
+
+        DefinitionChanged = null;
+        AddRequested = null;
+        FocusRequested = null;
+        CloseRequested = null;
+
         WebView.Dispose();
     }
 
