@@ -16,6 +16,8 @@ public partial class ChatPanel : UserControl
         Loaded += OnLoaded;
     }
 
+    public event EventHandler? DefinitionChanged;
+
     public void Configure(
         ChatPanelDefinition definition,
         WebViewEnvironmentService environmentService)
@@ -23,9 +25,19 @@ public partial class ChatPanel : UserControl
         _definition = definition ?? throw new ArgumentNullException(nameof(definition));
         _environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
         TitleText.Text = definition.Title;
+
+        if (IsLoaded)
+        {
+            _ = InitializeAsync();
+        }
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        await InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
     {
         if (_initialized || _definition is null || _environmentService is null)
         {
@@ -61,11 +73,21 @@ public partial class ChatPanel : UserControl
             return;
         }
 
-        if (Uri.TryCreate(WebView.CoreWebView2.Source, UriKind.Absolute, out var uri)
-            && IsChatGptHost(uri.Host))
+        if (!Uri.TryCreate(WebView.CoreWebView2.Source, UriKind.Absolute, out var uri)
+            || !IsChatGptHost(uri.Host))
         {
-            _definition.ConversationUrl = uri.AbsoluteUri;
+            return;
         }
+
+        var currentUrl = uri.AbsoluteUri;
+
+        if (string.Equals(_definition.ConversationUrl, currentUrl, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _definition.ConversationUrl = currentUrl;
+        DefinitionChanged?.Invoke(this, EventArgs.Empty);
     }
 
     private static bool IsChatGptHost(string host) =>
