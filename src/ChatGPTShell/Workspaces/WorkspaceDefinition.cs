@@ -19,7 +19,9 @@ public sealed class WorkspaceDefinition
         var panel = new ChatPanelDefinition
         {
             Title = "ChatGPT",
-            ConversationUrl = "https://chatgpt.com/"
+            ConversationUrl = "https://chatgpt.com/",
+            RoleId = "general",
+            RoleVersion = "1.0"
         };
 
         return new WorkspaceDefinition

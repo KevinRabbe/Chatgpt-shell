@@ -8,5 +8,9 @@ public sealed class ChatPanelDefinition
 
     public string ConversationUrl { get; set; } = "https://chatgpt.com/";
 
-    public string? Role { get; set; }
+    public string? RoleId { get; set; }
+
+    public string? RoleVersion { get; set; }
+
+    public string? Specialization { get; set; }
 }

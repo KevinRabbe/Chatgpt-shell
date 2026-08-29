@@ -20,6 +20,8 @@ public partial class MainWindow : Window
         try
         {
             var app = (App)Application.Current;
+
+            _ = await app.RoleLibrary.LoadAsync();
             _workspace = await app.WorkspacePersistence.LoadOrCreateAsync();
             _workspace.EnsureUsableLayout();
 
@@ -33,7 +35,7 @@ public partial class MainWindow : Window
         {
             MessageBox.Show(
                 exception.Message,
-                "ChatGPT Shell — workspace failed to load",
+                "ChatGPT Shell — startup failed",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
 
