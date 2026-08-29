@@ -21,13 +21,11 @@ public partial class MainWindow : Window
         {
             var app = (App)Application.Current;
             _workspace = await app.WorkspacePersistence.LoadOrCreateAsync();
+            _workspace.EnsureUsableLayout();
 
-            var panel = _workspace.Panels.FirstOrDefault(candidate => candidate.Id == _workspace.ActivePanelId)
-                ?? _workspace.Panels[0];
-
-            _workspace.ActivePanelId = panel.Id;
-            ChatHost.DefinitionChanged += OnChatDefinitionChanged;
-            ChatHost.Configure(panel, app.WebViewEnvironment);
+            WorkspaceHost.DefinitionChanged += OnWorkspaceChanged;
+            WorkspaceHost.LayoutChanged += OnWorkspaceChanged;
+            WorkspaceHost.Configure(_workspace, app.WebViewEnvironment);
 
             await app.WorkspacePersistence.SaveAsync(_workspace);
         }
@@ -43,7 +41,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private async void OnChatDefinitionChanged(object? sender, EventArgs e)
+    private async void OnWorkspaceChanged(object? sender, EventArgs e)
     {
         if (_workspace is null)
         {

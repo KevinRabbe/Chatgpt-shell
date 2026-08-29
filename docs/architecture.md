@@ -19,9 +19,11 @@ App
 ├─ shared WebViewEnvironmentService
 ├─ WorkspacePersistenceService
 └─ MainWindow
-   └─ ChatPanel
-      ├─ ChatPanelDefinition
-      └─ WebView2
+   └─ WorkspaceHost
+      └─ recursive LayoutNodeDefinition tree
+         └─ ChatPanel leaves
+            ├─ ChatPanelDefinition
+            └─ WebView2
 ```
 
 ### Shared WebView environment
@@ -40,7 +42,7 @@ This separation is mandatory for scaling to projects with many saved chats but o
 
 ### Workspace persistence
 
-`WorkspaceDefinition` owns the saved panel collection and the currently active panel identity. The first version still renders one panel, but the persisted model already supports an arbitrary number of saved panel definitions.
+`WorkspaceDefinition` owns the saved panel collection and the currently active panel identity.
 
 Workspace state is stored as human-readable JSON at `%LOCALAPPDATA%/ChatGPTShell/workspace.json`.
 
@@ -49,6 +51,23 @@ Writes use a temporary file followed by replacement so an interrupted save does 
 Malformed or structurally unusable workspace JSON is preserved with an `.invalid.<timestamp>` suffix before a default workspace is created.
 
 A `ChatPanel` reports persistent state changes through `DefinitionChanged`; it does not write files itself. This keeps the live WebView surface disposable and leaves persistence ownership above the panel layer.
+
+### Recursive layout tree
+
+The layout system deliberately has only two node kinds:
+
+```text
+Panel(panelId)
+Split(orientation, ratio, first, second)
+```
+
+`WorkspaceHost` recursively converts this tree into WPF grids. A panel leaf creates one live `ChatPanel`; a split creates two child regions separated by a `GridSplitter`.
+
+There are no special `TwoColumns`, `ThreeColumns`, or `FourGrid` application modes. Any number of live panels can be represented by composing the same two primitives.
+
+Saved panel definitions that do not appear in the layout tree are dormant and create no WebView. A valid layout may reference a saved panel at most once.
+
+Splitter ratios are persisted on drag completion and clamped to a usable range. Older workspaces without a layout tree automatically migrate to a one-panel tree rooted at the active saved panel.
 
 ## Explicit non-goals
 
@@ -75,7 +94,8 @@ Project
 └─ Persistence
 
 Runtime
-├─ active panel host
+├─ WorkspaceHost
+│  └─ active ChatPanel surfaces only
 └─ shared WebView2 environment
 ```
 
