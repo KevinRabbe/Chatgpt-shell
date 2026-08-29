@@ -62,9 +62,13 @@ public partial class ChatPanel : UserControl
         }
 
         if (Uri.TryCreate(WebView.CoreWebView2.Source, UriKind.Absolute, out var uri)
-            && uri.Host.EndsWith("chatgpt.com", StringComparison.OrdinalIgnoreCase))
+            && IsChatGptHost(uri.Host))
         {
             _definition.ConversationUrl = uri.AbsoluteUri;
         }
     }
+
+    private static bool IsChatGptHost(string host) =>
+        host.Equals("chatgpt.com", StringComparison.OrdinalIgnoreCase)
+        || host.EndsWith(".chatgpt.com", StringComparison.OrdinalIgnoreCase);
 }
