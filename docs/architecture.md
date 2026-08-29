@@ -36,9 +36,32 @@ This gives panels a common authentication/session profile and prevents each pane
 
 `ChatPanelDefinition` is persistent-friendly state: identity, title, role, and conversation URL.
 
-`ChatPanel` is the live UI/WebView surface. Later versions may unload a `ChatPanel` while retaining its definition.
+`ChatPanel` is the live UI/WebView surface. Closing or temporarily removing that surface must not delete the saved definition.
 
 This separation is mandatory for scaling to projects with many saved chats but only a small number of live WebViews.
+
+### Panel lifecycle
+
+A saved chat can be in one of three practical states:
+
+```text
+SAVED + LIVE
+Panel definition is referenced by the layout tree and owns a live WebView.
+
+SAVED + DORMANT
+Panel definition remains in the workspace but is absent from the layout tree, so no WebView exists.
+
+FOCUSED
+One live panel is temporarily rendered alone. Focus is transient and does not replace the persisted layout tree.
+```
+
+Closing a live panel collapses its layout branch, disposes its `ChatPanel`/WebView surface, and leaves the `ChatPanelDefinition` available for reopening later.
+
+Opening a new chat creates a saved definition and splits the selected live panel beside or below it. Reopening a dormant chat reuses its existing saved definition instead of creating another conversation identity.
+
+Focusing a panel temporarily removes other live WebViews from the runtime surface. Restoring focus reconstructs those surfaces from their saved definitions and conversation URLs.
+
+Panel header controls remain intentionally minimal: add/reopen, focus/restore, and close-to-dormant. These are harness controls, not browser navigation controls.
 
 ### Workspace persistence
 

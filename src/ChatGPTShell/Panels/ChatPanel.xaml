@@ -12,12 +12,56 @@
             Background="#1A1A1A"
             BorderBrush="#2A2A2A"
             BorderThickness="0,0,0,1"
-            Padding="10,0">
-      <TextBlock x:Name="TitleText"
-                 VerticalAlignment="Center"
-                 Foreground="#EDEDED"
-                 FontSize="12"
-                 Text="ChatGPT" />
+            Padding="10,0,4,0">
+      <Grid>
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="30" />
+          <ColumnDefinition Width="30" />
+          <ColumnDefinition Width="30" />
+        </Grid.ColumnDefinitions>
+
+        <TextBlock x:Name="TitleText"
+                   Grid.Column="0"
+                   VerticalAlignment="Center"
+                   Foreground="#EDEDED"
+                   FontSize="12"
+                   Text="ChatGPT"
+                   TextTrimming="CharacterEllipsis" />
+
+        <Button x:Name="AddButton"
+                Grid.Column="1"
+                Content="＋"
+                ToolTip="Add or reopen a chat"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Foreground="#D8D8D8"
+                FontSize="15"
+                Padding="0"
+                Click="OnAddClick" />
+
+        <Button x:Name="FocusButton"
+                Grid.Column="2"
+                Content="□"
+                ToolTip="Focus or restore this chat"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Foreground="#D8D8D8"
+                FontSize="14"
+                Padding="0"
+                Click="OnFocusClick" />
+
+        <Button x:Name="CloseButton"
+                Grid.Column="3"
+                Content="×"
+                ToolTip="Close this panel without deleting the chat"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                Foreground="#D8D8D8"
+                FontSize="15"
+                Padding="0"
+                Click="OnCloseClick" />
+      </Grid>
     </Border>
 
     <wv2:WebView2 x:Name="WebView"
