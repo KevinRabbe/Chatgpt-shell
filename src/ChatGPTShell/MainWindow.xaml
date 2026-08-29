@@ -1,0 +1,13 @@
+<Window x:Class="ChatGPTShell.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:panels="clr-namespace:ChatGPTShell.Panels"
+        Title="ChatGPT Shell"
+        Width="1280"
+        Height="820"
+        MinWidth="720"
+        MinHeight="480"
+        WindowStartupLocation="CenterScreen"
+        Background="#111111">
+  <panels:ChatPanel x:Name="ChatHost" />
+</Window>
