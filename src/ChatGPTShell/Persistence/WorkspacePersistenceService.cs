@@ -29,9 +29,9 @@ public sealed class WorkspacePersistenceService
     {
         if (!File.Exists(_workspacePath))
         {
-            var workspace = WorkspaceDefinition.CreateDefault();
-            await SaveAsync(workspace);
-            return workspace;
+            var newWorkspace = WorkspaceDefinition.CreateDefault();
+            await SaveAsync(newWorkspace);
+            return newWorkspace;
         }
 
         WorkspaceDefinition? workspace = null;
