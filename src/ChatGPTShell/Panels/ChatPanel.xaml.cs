@@ -100,6 +100,7 @@ public partial class ChatPanel : UserControl, IDisposable
             }
 
             WebView.CoreWebView2.NavigationCompleted += (_, _) => CaptureConversationUrl();
+            WebView.CoreWebView2.HistoryChanged += (_, _) => CaptureConversationUrl();
             WebView.CoreWebView2.Navigate(_definition.ConversationUrl);
         }
         catch (Exception) when (_disposed)
