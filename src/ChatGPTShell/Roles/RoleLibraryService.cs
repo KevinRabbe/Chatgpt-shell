@@ -114,7 +114,7 @@ public sealed class RoleLibraryService
             throw new InvalidDataException($"Unsupported role-library schema version '{document.SchemaVersion}'.");
         }
 
-        if (document.Roles.Count == 0)
+        if (document.Roles is not { Count: > 0 })
         {
             throw new InvalidDataException("The role library must contain at least one role.");
         }
@@ -123,7 +123,8 @@ public sealed class RoleLibraryService
 
         foreach (var role in document.Roles)
         {
-            if (string.IsNullOrWhiteSpace(role.Id)
+            if (role is null
+                || string.IsNullOrWhiteSpace(role.Id)
                 || string.IsNullOrWhiteSpace(role.Name)
                 || string.IsNullOrWhiteSpace(role.Version)
                 || string.IsNullOrWhiteSpace(role.PromptTemplate))
