@@ -1,0 +1,26 @@
+<UserControl x:Class="ChatGPTShell.Panels.ChatPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf">
+  <Grid Background="#111111">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="32" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+
+    <Border Grid.Row="0"
+            Background="#1A1A1A"
+            BorderBrush="#2A2A2A"
+            BorderThickness="0,0,0,1"
+            Padding="10,0">
+      <TextBlock x:Name="TitleText"
+                 VerticalAlignment="Center"
+                 Foreground="#EDEDED"
+                 FontSize="12"
+                 Text="ChatGPT" />
+    </Border>
+
+    <wv2:WebView2 x:Name="WebView"
+                  Grid.Row="1" />
+  </Grid>
+</UserControl>
