@@ -34,20 +34,25 @@ public sealed class WorkspacePersistenceService
             return workspace;
         }
 
+        WorkspaceDefinition? workspace = null;
+
         try
         {
             await using var stream = File.OpenRead(_workspacePath);
-            var workspace = await JsonSerializer.DeserializeAsync<WorkspaceDefinition>(stream, JsonOptions);
-
-            if (workspace is not null && workspace.Panels.Count > 0)
-            {
-                return workspace;
-            }
+            workspace = await JsonSerializer.DeserializeAsync<WorkspaceDefinition>(stream, JsonOptions);
         }
         catch (JsonException)
         {
-            PreserveInvalidWorkspace();
+            // Preserve the original file below and replace it with a usable default.
         }
+
+        if (workspace?.Panels is { Count: > 0 } panels
+            && panels.All(panel => panel is not null))
+        {
+            return workspace;
+        }
+
+        PreserveInvalidWorkspace();
 
         var replacement = WorkspaceDefinition.CreateDefault();
         await SaveAsync(replacement);
