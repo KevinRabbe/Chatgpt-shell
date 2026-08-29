@@ -17,6 +17,7 @@ Saved chats and project metadata should be cheap. Live ChatGPT surfaces are comp
 ```text
 App
 ├─ shared WebViewEnvironmentService
+├─ WorkspacePersistenceService
 └─ MainWindow
    └─ ChatPanel
       ├─ ChatPanelDefinition
@@ -36,6 +37,18 @@ This gives panels a common authentication/session profile and prevents each pane
 `ChatPanel` is the live UI/WebView surface. Later versions may unload a `ChatPanel` while retaining its definition.
 
 This separation is mandatory for scaling to projects with many saved chats but only a small number of live WebViews.
+
+### Workspace persistence
+
+`WorkspaceDefinition` owns the saved panel collection and the currently active panel identity. The first version still renders one panel, but the persisted model already supports an arbitrary number of saved panel definitions.
+
+Workspace state is stored as human-readable JSON at `%LOCALAPPDATA%/ChatGPTShell/workspace.json`.
+
+Writes use a temporary file followed by replacement so an interrupted save does not partially overwrite the last valid workspace. Saves are serialized through one gate to prevent concurrent navigation events from racing the same file.
+
+Malformed or structurally unusable workspace JSON is preserved with an `.invalid.<timestamp>` suffix before a default workspace is created.
+
+A `ChatPanel` reports persistent state changes through `DefinitionChanged`; it does not write files itself. This keeps the live WebView surface disposable and leaves persistence ownership above the panel layer.
 
 ## Explicit non-goals
 
