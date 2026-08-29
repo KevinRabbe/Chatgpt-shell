@@ -12,8 +12,10 @@ public partial class WorkspaceHost : UserControl
 {
     private static readonly Brush SplitterBrush = new SolidColorBrush(Color.FromRgb(42, 42, 42));
 
+    private readonly Dictionary<Guid, ChatPanel> _livePanels = new();
     private WorkspaceDefinition? _workspace;
     private WebViewEnvironmentService? _environmentService;
+    private Guid? _focusedPanelId;
 
     public WorkspaceHost()
     {
@@ -32,13 +34,46 @@ public partial class WorkspaceHost : UserControl
         _environmentService = environmentService ?? throw new ArgumentNullException(nameof(environmentService));
 
         var layoutRepaired = workspace.EnsureUsableLayout();
-
-        HostRoot.Children.Clear();
-        HostRoot.Children.Add(BuildNode(workspace.LayoutRoot!));
+        Render();
 
         if (layoutRepaired)
         {
             LayoutChanged?.Invoke(this, EventArgs.Empty);
+        }
+    }
+
+    private void Render()
+    {
+        if (_workspace is null || _environmentService is null)
+        {
+            throw new InvalidOperationException("The workspace host must be configured before rendering.");
+        }
+
+        var renderRoot = _focusedPanelId is Guid focusedPanelId
+            ? LayoutNodeDefinition.ForPanel(focusedPanelId)
+            : _workspace.LayoutRoot!;
+
+        var requiredPanelIds = LayoutTreeEditor.GetVisiblePanelIds(renderRoot).ToHashSet();
+
+        foreach (var entry in _livePanels.ToArray())
+        {
+            DetachPanel(entry.Value);
+
+            if (!requiredPanelIds.Contains(entry.Key))
+            {
+                entry.Value.Dispose();
+                _livePanels.Remove(entry.Key);
+            }
+        }
+
+        HostRoot.Children.Clear();
+        HostRoot.Children.Add(BuildNode(renderRoot));
+
+        var canClose = LayoutTreeEditor.GetVisiblePanelIds(_workspace.LayoutRoot).Count > 1;
+
+        foreach (var panel in _livePanels.Values)
+        {
+            panel.SetCloseEnabled(canClose);
         }
     }
 
@@ -54,11 +89,7 @@ public partial class WorkspaceHost : UserControl
             var panelId = node.PanelId
                 ?? throw new InvalidOperationException("A panel layout node must reference a panel id.");
 
-            var definition = _workspace.Panels.Single(panel => panel.Id == panelId);
-            var panel = new ChatPanel();
-            panel.DefinitionChanged += OnPanelDefinitionChanged;
-            panel.Configure(definition, _environmentService);
-            return panel;
+            return GetOrCreatePanel(panelId);
         }
 
         if (node.First is null || node.Second is null)
@@ -69,6 +100,30 @@ public partial class WorkspaceHost : UserControl
         return node.Orientation == SplitOrientation.Columns
             ? BuildColumnSplit(node)
             : BuildRowSplit(node);
+    }
+
+    private ChatPanel GetOrCreatePanel(Guid panelId)
+    {
+        if (_workspace is null || _environmentService is null)
+        {
+            throw new InvalidOperationException("The workspace host must be configured before creating panels.");
+        }
+
+        if (_livePanels.TryGetValue(panelId, out var existingPanel))
+        {
+            return existingPanel;
+        }
+
+        var definition = _workspace.Panels.Single(panel => panel.Id == panelId);
+        var panel = new ChatPanel();
+        panel.DefinitionChanged += OnPanelDefinitionChanged;
+        panel.AddRequested += OnPanelAddRequested;
+        panel.FocusRequested += OnPanelFocusRequested;
+        panel.CloseRequested += OnPanelCloseRequested;
+        panel.Configure(definition, _environmentService);
+
+        _livePanels.Add(panelId, panel);
+        return panel;
     }
 
     private Grid BuildColumnSplit(LayoutNodeDefinition node)
@@ -215,5 +270,173 @@ public partial class WorkspaceHost : UserControl
     private void OnPanelDefinitionChanged(object? sender, EventArgs e)
     {
         DefinitionChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnPanelAddRequested(object? sender, EventArgs e)
+    {
+        if (sender is not ChatPanel panel || _workspace is null)
+        {
+            return;
+        }
+
+        var menu = new ContextMenu
+        {
+            Placement = PlacementMode.MousePoint
+        };
+
+        menu.Items.Add(CreateMenuItem(
+            "New chat beside",
+            () => OpenNewPanel(panel.PanelId, SplitOrientation.Columns)));
+
+        menu.Items.Add(CreateMenuItem(
+            "New chat below",
+            () => OpenNewPanel(panel.PanelId, SplitOrientation.Rows)));
+
+        var visiblePanelIds = LayoutTreeEditor.GetVisiblePanelIds(_workspace.LayoutRoot).ToHashSet();
+        var dormantPanels = _workspace.Panels
+            .Where(definition => !visiblePanelIds.Contains(definition.Id))
+            .ToList();
+
+        if (dormantPanels.Count > 0)
+        {
+            menu.Items.Add(new Separator());
+
+            var reopenMenu = new MenuItem
+            {
+                Header = "Reopen saved chat"
+            };
+
+            foreach (var definition in dormantPanels)
+            {
+                var savedPanelId = definition.Id;
+                reopenMenu.Items.Add(CreateMenuItem(
+                    definition.Title,
+                    () => OpenExistingPanel(panel.PanelId, savedPanelId)));
+            }
+
+            menu.Items.Add(reopenMenu);
+        }
+
+        menu.IsOpen = true;
+    }
+
+    private void OnPanelFocusRequested(object? sender, EventArgs e)
+    {
+        if (sender is not ChatPanel panel)
+        {
+            return;
+        }
+
+        _focusedPanelId = _focusedPanelId == panel.PanelId
+            ? null
+            : panel.PanelId;
+
+        Render();
+    }
+
+    private void OnPanelCloseRequested(object? sender, EventArgs e)
+    {
+        if (sender is not ChatPanel panel || _workspace is null)
+        {
+            return;
+        }
+
+        if (!LayoutTreeEditor.TryClosePanel(_workspace, panel.PanelId))
+        {
+            return;
+        }
+
+        if (_focusedPanelId == panel.PanelId)
+        {
+            _focusedPanelId = null;
+        }
+
+        Render();
+        LayoutChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OpenNewPanel(Guid targetPanelId, SplitOrientation orientation)
+    {
+        if (_workspace is null)
+        {
+            return;
+        }
+
+        var definition = new ChatPanelDefinition
+        {
+            Title = GetNextChatTitle(),
+            ConversationUrl = "https://chatgpt.com/"
+        };
+
+        _workspace.Panels.Add(definition);
+
+        if (!LayoutTreeEditor.TrySplitPanel(_workspace, targetPanelId, definition.Id, orientation))
+        {
+            _workspace.Panels.Remove(definition);
+            return;
+        }
+
+        _focusedPanelId = null;
+        Render();
+        LayoutChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OpenExistingPanel(Guid targetPanelId, Guid panelIdToOpen)
+    {
+        if (_workspace is null
+            || !LayoutTreeEditor.TrySplitPanel(
+                _workspace,
+                targetPanelId,
+                panelIdToOpen,
+                SplitOrientation.Columns))
+        {
+            return;
+        }
+
+        _focusedPanelId = null;
+        Render();
+        LayoutChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private string GetNextChatTitle()
+    {
+        if (_workspace is null)
+        {
+            return "Chat";
+        }
+
+        var existingTitles = _workspace.Panels
+            .Select(panel => panel.Title)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var number = _workspace.Panels.Count + 1;
+        var title = $"Chat {number}";
+
+        while (existingTitles.Contains(title))
+        {
+            number++;
+            title = $"Chat {number}";
+        }
+
+        return title;
+    }
+
+    private static MenuItem CreateMenuItem(string header, Action action)
+    {
+        var item = new MenuItem
+        {
+            Header = header
+        };
+
+        item.Click += (_, _) => action();
+        return item;
+    }
+
+    private static void DetachPanel(ChatPanel panel)
+    {
+        if (VisualTreeHelper.GetParent(panel) is Panel parent)
+        {
+            parent.Children.Remove(panel);
+        }
     }
 }
