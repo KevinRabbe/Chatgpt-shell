@@ -1,4 +1,5 @@
 using ChatGPTShell.Panels;
+using ChatGPTShell.Projects;
 
 namespace ChatGPTShell.Workspaces;
 
@@ -7,6 +8,8 @@ public sealed class WorkspaceDefinition
     public Guid Id { get; init; } = Guid.NewGuid();
 
     public string Name { get; set; } = "Default";
+
+    public ProjectProfile Project { get; set; } = new();
 
     public List<ChatPanelDefinition> Panels { get; set; } = new();
 
@@ -26,6 +29,11 @@ public sealed class WorkspaceDefinition
 
         return new WorkspaceDefinition
         {
+            Name = "Default",
+            Project = new ProjectProfile
+            {
+                Name = "Default"
+            },
             Panels = new List<ChatPanelDefinition> { panel },
             ActivePanelId = panel.Id,
             LayoutRoot = LayoutNodeDefinition.ForPanel(panel.Id)
@@ -34,6 +42,8 @@ public sealed class WorkspaceDefinition
 
     public bool EnsureUsableLayout()
     {
+        EnsureProjectProfile();
+
         if (Panels.Count == 0)
         {
             throw new InvalidOperationException("A workspace must contain at least one panel definition.");
@@ -61,6 +71,21 @@ public sealed class WorkspaceDefinition
         }
 
         return false;
+    }
+
+    private void EnsureProjectProfile()
+    {
+        Project ??= new ProjectProfile();
+
+        if (string.IsNullOrWhiteSpace(Project.Name))
+        {
+            Project.Name = string.IsNullOrWhiteSpace(Name) ? "Default" : Name.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            Name = Project.Name;
+        }
     }
 
     private static bool TryValidateLayout(
