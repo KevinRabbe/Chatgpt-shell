@@ -13,6 +13,7 @@ public sealed class WorkspacePersistenceService
     };
 
     private readonly string _workspacePath;
+    private readonly SemaphoreSlim _saveGate = new(1, 1);
 
     public WorkspacePersistenceService()
     {
@@ -28,7 +29,9 @@ public sealed class WorkspacePersistenceService
     {
         if (!File.Exists(_workspacePath))
         {
-            return WorkspaceDefinition.CreateDefault();
+            var workspace = WorkspaceDefinition.CreateDefault();
+            await SaveAsync(workspace);
+            return workspace;
         }
 
         try
@@ -36,38 +39,48 @@ public sealed class WorkspacePersistenceService
             await using var stream = File.OpenRead(_workspacePath);
             var workspace = await JsonSerializer.DeserializeAsync<WorkspaceDefinition>(stream, JsonOptions);
 
-            if (workspace is null || workspace.Panels.Count == 0)
+            if (workspace is not null && workspace.Panels.Count > 0)
             {
-                return WorkspaceDefinition.CreateDefault();
+                return workspace;
             }
-
-            return workspace;
         }
         catch (JsonException)
         {
             PreserveInvalidWorkspace();
-            return WorkspaceDefinition.CreateDefault();
         }
+
+        var replacement = WorkspaceDefinition.CreateDefault();
+        await SaveAsync(replacement);
+        return replacement;
     }
 
     public async Task SaveAsync(WorkspaceDefinition workspace)
     {
         ArgumentNullException.ThrowIfNull(workspace);
 
-        var tempPath = _workspacePath + ".tmp";
+        await _saveGate.WaitAsync();
 
-        await using (var stream = File.Create(tempPath))
+        try
         {
-            await JsonSerializer.SerializeAsync(stream, workspace, JsonOptions);
-            await stream.FlushAsync();
-        }
+            var tempPath = _workspacePath + ".tmp";
 
-        File.Move(tempPath, _workspacePath, overwrite: true);
+            await using (var stream = File.Create(tempPath))
+            {
+                await JsonSerializer.SerializeAsync(stream, workspace, JsonOptions);
+                await stream.FlushAsync();
+            }
+
+            File.Move(tempPath, _workspacePath, overwrite: true);
+        }
+        finally
+        {
+            _saveGate.Release();
+        }
     }
 
     private void PreserveInvalidWorkspace()
     {
-        var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmss");
+        var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMddHHmmssfff");
         var backupPath = $"{_workspacePath}.invalid.{timestamp}";
         File.Move(_workspacePath, backupPath, overwrite: false);
     }
