@@ -2,7 +2,7 @@ namespace ChatGPTShell.Projects;
 
 public sealed class ProjectProfile
 {
-    public string Name { get; set; } = "Default";
+    public string Name { get; set; } = string.Empty;
 
     public string TechStack { get; set; } = string.Empty;
 
